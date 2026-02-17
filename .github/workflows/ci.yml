@@ -226,6 +226,40 @@ jobs :
           cache-to: type=gha,mode=max
           tags: |
             ${{ steps.frontend_meta.outputs.tags }}
+
+  snyk-security:
+    needs: linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      # --- SCAN FRONTEND ---
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: bun install
+
+      - name: Scan Frontend
+        working-directory: ./frontend
+        # On utilise --auth pour être sûr que le token passe bien
+        run: snyk test --auth=${{ secrets.SNYK_TOKEN }}
+
+      # --- SCAN BACKEND ---
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: bun install
+
+      - name: Scan Backend
+        working-directory: ./backend
+        run: snyk test --auth=${{ secrets.SNYK_TOKEN }}
   
   deploy-application:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
