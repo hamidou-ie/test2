@@ -4,14 +4,12 @@ on:
   push : 
     branches : 
       - main
-      - dev
-      - 'release/*'
     paths : 
       - 'docker-compose.yml' 
       - 'backend/**'
       - 'frontend/**'
       - 'nginx.conf'
-      - '.github/workflows/github-ci.yml'
+      - '.github/workflows/ci.yml'
   
   pull_request : 
     branches : 
@@ -23,7 +21,7 @@ on:
       - 'backend/**'
       - 'frontend/**'
       - 'nginx.conf'
-      - '.github/workflows/github-ci.yml'
+      - '.github/workflows/ci.yml'
 
 
 
@@ -35,6 +33,7 @@ env:
 jobs : 
 
   linting : 
+    if: github.event_name == 'pull_request'
     runs-on : ubuntu-latest
     timeout-minutes: 15
   
@@ -74,6 +73,7 @@ jobs :
   test-frontend :
 
     needs : linting
+    if: github.event_name == 'pull_request'
     runs-on : ubuntu-latest
     timeout-minutes: 15
 
@@ -99,6 +99,7 @@ jobs :
   test-backend : 
 
     needs : linting
+    if: github.event_name == 'pull_request'
     runs-on : ubuntu-latest
     timeout-minutes: 15
 
@@ -122,10 +123,7 @@ jobs :
 
 
   build-and-push-backend :
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && (github.base_ref == 'main' || startsWith(github.base_ref, 'release/')))
-    needs : test-backend
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -177,10 +175,7 @@ jobs :
             ${{ steps.backend_meta.outputs.tags }}
   
   build-and-push-frontend :
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && (github.base_ref == 'main' || startsWith(github.base_ref, 'release/')))
-    needs : test-frontend
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
