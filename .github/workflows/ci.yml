@@ -111,8 +111,8 @@ jobs:
         run: bun test
         working-directory: ./backend
 
-  snyk-scan:
-    needs: [test-frontend, test-backend]
+  snyk-scan-frontend:
+    needs: test-frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
@@ -136,6 +136,22 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk test --auth=${{ secrets.SNYK_TOKEN }}
 
+
+  snyk-scan-backend:
+    needs: test-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
       - name: Install Backend Dependencies
         working-directory: ./backend
         run: bun install
@@ -144,10 +160,11 @@ jobs:
         working-directory: ./backend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --auth=${{ secrets.SNYK_TOKEN }} 
+        run: snyk test --auth=${{ secrets.SNYK_TOKEN }}
+      
 
   build-and-push-backend:
-    needs: test-backend
+    needs: snyk-scan-backend
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.backend_meta.outputs.version }}
@@ -188,7 +205,7 @@ jobs:
             ${{ steps.backend_meta.outputs.tags }}
 
   build-and-push-frontend:
-    needs: test-frontend
+    needs: snyk-scan-frontend
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.frontend_meta.outputs.version }}
