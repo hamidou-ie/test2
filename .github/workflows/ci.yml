@@ -9,6 +9,8 @@ on:
       - 'docker-compose-server.yml'
       - 'infra/**'
       - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/github-ci.yml'
 
 env:
   REGISTRY: ghcr.io
