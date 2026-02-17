@@ -1,8 +1,5 @@
 name: Pipeline
 
-permissions:
-  contents: write
-
 on:
   pull_request:
     branches:
@@ -12,6 +9,8 @@ on:
       - 'docker-compose-server.yml'
       - 'infra/**'
       - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/ci.yml'
 
 env:
   REGISTRY: ghcr.io
@@ -49,7 +48,7 @@ jobs:
             git config --global user.email "actions@github.com"
             git add .
             git commit -m "Apply code formatting and linting fixes"
-            git push  origin HEAD
+            git push origin HEAD:${GITHUB_HEAD_REF}
           }
 
   test-frontend:
@@ -64,7 +63,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      # 🔹 Cache Bun dependencies frontend
+      # Cache Bun dependencies frontend
       - name: Cache frontend dependencies
         uses: actions/cache@v3
         with:
@@ -93,7 +92,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      # 🔹 Cache Bun dependencies backend
+      # Cache Bun dependencies backend
       - name: Cache backend dependencies
         uses: actions/cache@v3
         with:
@@ -164,7 +163,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔹 Build & push backend avec cache Docker séparé
+      # Build & push backend avec cache Docker séparé 
       - name: Build & push backend
         uses: docker/build-push-action@v5
         with:
@@ -205,7 +204,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔹 Build & push frontend avec cache Docker séparé
+      # Build & push frontend avec cache Docker séparé
       - name: Build & push frontend
         uses: docker/build-push-action@v5
         with:
@@ -262,3 +261,4 @@ jobs:
             docker pull ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/backend:${IMAGE_TAG}
             docker pull ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/frontend:${IMAGE_TAG}
             docker compose -f ~/docker-compose-server.yml up -d
+
