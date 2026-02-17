@@ -202,7 +202,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔹 Build & push frontend avec cache Docker séparé
+      # Build & push frontend avec cache Docker séparé
       - name: Build & push frontend
         uses: docker/build-push-action@v5
         with:
