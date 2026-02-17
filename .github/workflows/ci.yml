@@ -144,7 +144,7 @@ jobs:
         working-directory: ./backend
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --auth=${{ secrets.SNYK_TOKEN }}
+        run: snyk test --auth=${{ secrets.SNYK_TOKEN }} 
 
   build-and-push-backend:
     needs: test-backend
