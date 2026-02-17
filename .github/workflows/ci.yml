@@ -123,17 +123,19 @@ jobs:
       - name: Install Snyk CLI
         run: npm install -g snyk
 
-      - name: Authenticate Snyk
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} 
-        run: snyk auth $SNYK_TOKEN
+      # L'étape "Authenticate Snyk" a été supprimée ici.
+      # Snyk va s'authentifier tout seul grâce aux "env" ci-dessous.
 
       - name: Scan frontend
         working-directory: ./frontend
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk test
 
       - name: Scan backend
         working-directory: ./backend
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: snyk test
 
   build-and-push-backend:
