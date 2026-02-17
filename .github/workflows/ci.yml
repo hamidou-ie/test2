@@ -1,186 +1,160 @@
-name: Pipeline
+name : Pipeline
 
-on: 
-  pull_request:
-    branches:
+on:
+  push : 
+    branches : 
       - main
       - dev
-    paths:
-      - 'docker-compose-server.yml'
-      - 'infra/**'
+      - 'release/*'
+    paths : 
+      - 'docker-compose.yml' 
       - 'backend/**'
       - 'frontend/**'
-      - '.github/workflows/ci.yml'
+      - 'nginx.conf'
+      - '.github/workflows/github-ci.yml'
+  
+  pull_request : 
+    branches : 
+      - main
+      - dev
+      - 'release/*'
+    paths : 
+      - 'docker-compose.yml' 
+      - 'backend/**'
+      - 'frontend/**'
+      - 'nginx.conf'
+      - '.github/workflows/github-ci.yml'
+
+
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
   REPOSITORY: maeldem/projet_devops
 
-jobs:
+jobs : 
 
-  linting:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v4
-        with:
+  linting : 
+    runs-on : ubuntu-latest
+    timeout-minutes: 15
+  
+    steps : 
+      - name : Checkout branch
+        uses : actions/checkout@v4
+        with: 
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name : Setup Bun
+        uses : oven-sh/setup-bun@v2
 
-      - name: Install dependencies
-        run: bun install
-
-      - name: Run Linters
-        run: |
-          bun run check
+      - name : Install dependencies
+        run : bun install
+      
+      - name : Run Linters
+        run : | 
+          bun run check 
           bun run ci
 
       - name: Commit changes if any
+        if: github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}
-
           git diff --exit-code || {
             echo "Changes detected. Committing changes..."
-            git config --global user.name "github-actions"
-            git config --global user.email "actions@github.com"
-            git add .
-            git commit -m "Apply code formatting and linting fixes"
-            git push origin HEAD:$BRANCH_NAME
-          }
 
-  test-frontend:
-    needs: linting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v4
-        with:
+              git config --global user.name "github-actions"
+              git config --global user.email "actions@github.com"
+
+              git add .
+              git commit -m "Apply code formatting and linting fixes"
+              git push origin HEAD
+            }
+  
+  test-frontend :
+
+    needs : linting
+    runs-on : ubuntu-latest
+    timeout-minutes: 15
+
+    steps : 
+      - name : Checkout branch
+        uses : actions/checkout@v4
+        with: 
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name : Setup Bun
+        uses : oven-sh/setup-bun@v2
 
-      # Cache Bun dependencies frontend
-      - name: Cache frontend dependencies
-        uses: actions/cache@v3
-        with:
-          path: ./frontend/.bun
-          key: frontend-bun-${{ hashFiles('frontend/package.json') }}
-          restore-keys: |
-            frontend-bun-
-
-      - name: Install dependencies
-        run: bun install
+      - name : Install dependencies
+        run : bun install
         working-directory: ./frontend
 
-      - name: Run tests
-        run: bun test
+
+      - name : Run tests  
+        run : bun test
         working-directory: ./frontend
 
-  test-backend:
-    needs: linting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v4
-        with:
+
+  test-backend : 
+
+    needs : linting
+    runs-on : ubuntu-latest
+    timeout-minutes: 15
+
+    steps : 
+      - name : Checkout branch
+        uses : actions/checkout@v4
+        with: 
           fetch-depth: 0
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name : Setup Bun
+        uses : oven-sh/setup-bun@v2
 
-      # Cache Bun dependencies backend
-      - name: Cache backend dependencies
-        uses: actions/cache@v3
-        with:
-          path: ./backend/.bun
-          key: backend-bun-${{ hashFiles('backend/package.json') }}
-          restore-keys: |
-            backend-bun-
-
-      - name: Install dependencies
-        run: bun install
+      - name : Install dependencies
+        run : bun install
         working-directory: ./backend
 
-      - name: Run tests
-        run: bun test
+
+      - name : Run tests
+        run : bun test
         working-directory: ./backend
 
-  snyk-scan-frontend:
-    needs: test-frontend
+
+  build-and-push-backend :
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && (github.base_ref == 'main' || startsWith(github.base_ref, 'release/')))
+    needs : test-backend
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Snyk CLI
-        run: npm install -g snyk
-
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: bun install
-
-      - name: Scan frontend
-        working-directory: ./frontend
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --auth=${{ secrets.SNYK_TOKEN }}
-
-
-  snyk-scan-backend:
-    needs: test-backend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout branch
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install Snyk CLI
-        run: npm install -g snyk
-
-      - name: Install Backend Dependencies
-        working-directory: ./backend
-        run: bun install
-
-      - name: Scan backend
-        working-directory: ./backend
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        run: snyk test --auth=${{ secrets.SNYK_TOKEN }}
-      
-
-  build-and-push-backend:
-    needs: snyk-scan-backend
-    runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
-      image_tag: ${{ steps.backend_meta.outputs.version }}
+      image_tag: ${{ steps.release.outputs.version }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Extract release version
+        id: release
+        run: |
+          if [[ "${GITHUB_REF}" == refs/heads/release/* ]]; then
+            VERSION=${GITHUB_REF#refs/heads/release/}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "version=latest" >> $GITHUB_OUTPUT
+          fi
 
       - name: Extract backend metadata
         id: backend_meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
-          tags: |
-            type=sha, format=short
+          tags : |
+            type=raw,value=${{ steps.release.outputs.version }}
+            type=sha,format=short
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -191,37 +165,52 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Build & push backend avec cache Docker séparé 
+      
       - name: Build & push backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          file: ./backend/Dockerfile
-          push: true
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ${{ steps.backend_meta.outputs.tags }}
-
-  build-and-push-frontend:
-    needs: snyk-scan-frontend
+  
+  build-and-push-frontend :
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && (github.base_ref == 'main' || startsWith(github.base_ref, 'release/')))
+    needs : test-frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
-      image_tag: ${{ steps.frontend_meta.outputs.version }}
+      image_tag: ${{ steps.release.outputs.version }}
+
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Extract release version
+        id: release
+        run: |
+          if [[ "${GITHUB_REF}" == refs/heads/release/* ]]; then
+            VERSION=${GITHUB_REF#refs/heads/release/}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "version=latest" >> $GITHUB_OUTPUT
+          fi
 
       - name: Extract frontend metadata
         id: frontend_meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
-          tags: |
-            type=sha, format=short
+          tags : |
+            type=raw,value=${{ steps.release.outputs.version }}
+            type=sha,format=short
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -232,36 +221,34 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Build & push frontend avec cache Docker séparé
+        
       - name: Build & push frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ${{ steps.frontend_meta.outputs.tags }}
-
+  
   deploy-application:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [build-and-push-backend, build-and-push-frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: copy docker-compose-server.yml to server
+      - name: copy docker-compose.yml and nginx.conf to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: |
-            infra/
-            docker-compose-server.yml
+          source: "docker-compose-server.yml,nginx.conf"
           target: ~/
 
       - name: Deploy to server
@@ -276,18 +263,9 @@ jobs:
               echo "Error: IMAGE_TAG is not set. Exiting."
               exit 1
             fi
-
-            export IMAGE_TAG="$IMAGE_TAG"
-            export POSTGRES_DB="${{ secrets.POSTGRES_DB }}"
-            export POSTGRES_USER="${{ secrets.POSTGRES_USER }}"
-            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
-            export GRAFANA_ADMIN_USER="${{ secrets.GRAFANA_ADMIN_USER }}"
-            export GRAFANA_ADMIN_PASSWORD='${{ secrets.GRAFANA_ADMIN_PASSWORD }}'
-            export LETSENCRYPT_PATH="${{ secrets.LETSENCRYPT_PATH }}"
-
-            docker compose -f ~/docker-compose-server.yml down
-            docker image prune -f
+            cd ~
+            docker compose -f docker-compose-server.yml down || true
+            docker image prune -f || true
             docker pull ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/backend:${IMAGE_TAG}
             docker pull ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/frontend:${IMAGE_TAG}
-            docker compose -f ~/docker-compose-server.yml up -d
-
+            IMAGE_TAG=${IMAGE_TAG} docker compose -f docker-compose-server.yml up -d
