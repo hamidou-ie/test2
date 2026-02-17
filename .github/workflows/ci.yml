@@ -90,7 +90,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      # 🔹 Cache Bun dependencies backend
+      # Cache Bun dependencies backend
       - name: Cache backend dependencies
         uses: actions/cache@v3
         with:
