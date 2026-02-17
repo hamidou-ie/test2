@@ -48,7 +48,7 @@ jobs:
             git config --global user.email "actions@github.com"
             git add .
             git commit -m "Apply code formatting and linting fixes"
-            git push origin HEAD
+            git push origin HEAD:${GITHUB_REF_NAME}
           }
 
   test-frontend:
@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2 
+        uses: oven-sh/setup-bun@v2
 
       # Cache Bun dependencies frontend
       - name: Cache frontend dependencies
