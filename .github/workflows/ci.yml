@@ -161,7 +161,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔹 Build & push backend avec cache Docker séparé
+      # Build & push backend avec cache Docker séparé
       - name: Build & push backend
         uses: docker/build-push-action@v5
         with:
