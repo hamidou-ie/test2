@@ -125,7 +125,7 @@ jobs:
 
       - name: Authenticate Snyk
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} 
         run: snyk auth $SNYK_TOKEN
 
       - name: Scan frontend
